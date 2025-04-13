@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2563eb;
+        }
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .success {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        .error {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        pre {
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>TherapyTrack Debug Page</h1>
+    
+    <div class="card">
+        <h2>Static Debug Page</h2>
+        <p>If you can see this page, your web server is running and can serve static files.</p>
+    </div>
+    
+    <div class="card">
+        <h2>Test Links</h2>
+        <ul>
+            <li><a href="/">Home Page</a></li>
+            <li><a href="/login">Login Page</a></li>
+            <li><a href="/register">Register Page</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/test-db">Database Test</a></li>
+        </ul>
+    </div>
+    
+    <div class="card">
+        <h2>Environment Information</h2>
+        <div id="environment"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Connectivity Test</h2>
+        <button id="testBtn">Test Connection</button>
+        <div id="testResult"></div>
+    </div>
+    
+    <script>
+        // Display environment info
+        document.getElementById('environment').innerHTML = `
+            <pre>
+User Agent: ${navigator.userAgent}
+URL: ${window.location.href}
+Protocol: ${window.location.protocol}
+Hostname: ${window.location.hostname}
+Port: ${window.location.port}
+            </pre>
+        `;
+        
+        // Add test button functionality
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const resultElement = document.getElementById('testResult');
+            resultElement.innerHTML = '<p>Testing connection...</p>';
+            
+            try {
+                // Try to fetch the manifest.json as a simple connectivity test
+                const response = await fetch('/manifest.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    resultElement.innerHTML = `
+                        <div class="card success">
+                            <p>Connection successful!</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultElement.innerHTML = `
+                        <div class="card error">
+                            <p>Error fetching manifest: ${response.status} ${response.statusText}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultElement.innerHTML = `
+                    <div class="card error">
+                        <p>Connection error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html> 

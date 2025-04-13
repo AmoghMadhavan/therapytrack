@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TherapyTrack Reset Instructions</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #2563eb;
+        }
+        pre, code {
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .warning {
+            background-color: #fef3c7;
+            border-color: #fbbf24;
+        }
+        .info {
+            background-color: #dbeafe;
+            border-color: #93c5fd;
+        }
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        .copy-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            background-color: #6b7280;
+        }
+        .copy-container {
+            position: relative;
+        }
+        .step {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>TherapyTrack Database Reset Instructions</h1>
+    
+    <div class="card warning">
+        <h3>⚠️ Warning</h3>
+        <p>Following these instructions will reset your database and all data will be lost. Make sure you have a backup if needed.</p>
+    </div>
+
+    <div class="step">
+        <h2>Step 1: Go to Supabase SQL Editor</h2>
+        <p>Log in to your Supabase dashboard and navigate to the SQL Editor.</p>
+        <a href="https://app.supabase.io" target="_blank">Open Supabase Dashboard</a>
+    </div>
+
+    <div class="step">
+        <h2>Step 2: Run the Reset Script</h2>
+        <p>Copy and run the following SQL script to reset your database:</p>
+        
+        <div class="copy-container">
+            <button class="copy-button" onclick="copyToClipboard('reset-script')">Copy</button>
+            <pre id="reset-script">
+-- Database Reset Script for TherapyTrack
+-- WARNING: This will delete all data in the public schema!
+
+-- Disable triggers temporarily
+SET session_replication_role = 'replica';
+
+-- Drop all tables in the correct order to avoid foreign key conflicts
+DROP TABLE IF EXISTS public.session_attachments CASCADE;
+DROP TABLE IF EXISTS public.task_attachments CASCADE;
+DROP TABLE IF EXISTS public.message_attachments CASCADE;
+DROP TABLE IF EXISTS public.tasks CASCADE;
+DROP TABLE IF EXISTS public.messages CASCADE;
+DROP TABLE IF EXISTS public.goals CASCADE;
+DROP TABLE IF EXISTS public.sessions CASCADE;
+DROP TABLE IF EXISTS public.clients CASCADE;
+DROP TABLE IF EXISTS public.therapists CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+-- Also drop any functions that might be causing issues
+DROP FUNCTION IF EXISTS public.create_profiles_table();
+DROP FUNCTION IF EXISTS public.create_clients_table();
+DROP FUNCTION IF EXISTS public.create_sessions_table();
+DROP FUNCTION IF EXISTS public.create_all_tables();
+DROP FUNCTION IF EXISTS public.exec_sql(text);
+
+-- Re-enable triggers
+SET session_replication_role = 'origin';</pre>
+        </div>
+    </div>
+
+    <div class="step">
+        <h2>Step 3: Run the Initial Migration Script</h2>
+        <p>After resetting the database, run the initial migration script to recreate the tables:</p>
+        
+        <div class="copy-container">
+            <button class="copy-button" onclick="copyToClipboard('migration-script')">Copy</button>
+            <pre id="migration-script">
+-- Create profiles table to extend auth.users
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT NOT NULL,
+  display_name TEXT,
+  role TEXT NOT NULL CHECK (role IN ('therapist', 'client')),
+  phone_number TEXT,
+  photo_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_login TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  subscription_tier TEXT CHECK (subscription_tier IN ('basic', 'professional', 'enterprise')),
+  subscription_status TEXT CHECK (subscription_status IN ('active', 'canceled', 'trial')),
+  subscription_expiry TIMESTAMP WITH TIME ZONE,
+  notifications BOOLEAN DEFAULT TRUE,
+  email_alerts BOOLEAN DEFAULT TRUE,
+  sms_alerts BOOLEAN DEFAULT TRUE,
+  theme TEXT DEFAULT 'light' CHECK (theme IN ('light', 'dark', 'system'))
+);
+
+-- Create RLS policies for profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own profile" 
+  ON public.profiles FOR SELECT 
+  USING (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" 
+  ON public.profiles FOR UPDATE 
+  USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile" 
+  ON public.profiles FOR INSERT 
+  WITH CHECK (auth.uid() = id);
+
+-- Create extension for UUID generation if it doesn't exist
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create clients table
+CREATE TABLE IF NOT EXISTS public.clients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  therapist_id UUID REFERENCES auth.users(id) NOT NULL,
+  user_id UUID REFERENCES auth.users(id),
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  date_of_birth TIMESTAMP WITH TIME ZONE NOT NULL,
+  gender TEXT,
+  email TEXT,
+  phone TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'archived')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_session_date TIMESTAMP WITH TIME ZONE
+);
+
+-- Create RLS policies for clients
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Therapists can CRUD their own clients" 
+  ON public.clients FOR ALL 
+  USING (auth.uid() = therapist_id);
+CREATE POLICY "Clients can view their own data" 
+  ON public.clients FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- Create sessions table
+CREATE TABLE IF NOT EXISTS public.sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE NOT NULL,
+  therapist_id UUID REFERENCES auth.users(id) NOT NULL,
+  date TIMESTAMP WITH TIME ZONE NOT NULL,
+  duration INTEGER NOT NULL DEFAULT 50,
+  status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'canceled', 'no-show')),
+  location TEXT NOT NULL DEFAULT 'telehealth' CHECK (location IN ('clinic', 'school', 'home', 'telehealth')),
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create RLS policies for sessions
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Therapists can CRUD their own sessions" 
+  ON public.sessions FOR ALL 
+  USING (auth.uid() = therapist_id);</pre>
+        </div>
+    </div>
+
+    <div class="step">
+        <h2>Step 4: Restart Your Application</h2>
+        <p>After resetting the database and recreating the tables, restart your application:</p>
+        <code>npm start</code>
+    </div>
+
+    <div class="card info">
+        <h3>🔍 Troubleshooting</h3>
+        <p>If you still see a white screen after resetting the database, try clearing your browser cache completely:</p>
+        <ul>
+            <li><strong>Chrome/Edge:</strong> Ctrl+Shift+Delete or Cmd+Shift+Delete on Mac</li>
+            <li><strong>Firefox:</strong> Ctrl+Shift+Delete or Cmd+Shift+Delete on Mac</li>
+            <li><strong>Safari:</strong> Option+Cmd+E</li>
+        </ul>
+        <p>or try accessing the debug page at: <a href="/debug.html">/debug.html</a></p>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(function() {
+                const button = document.querySelector(`#${elementId}`).parentNode.querySelector('.copy-button');
+                button.textContent = "Copied!";
+                setTimeout(() => {
+                    button.textContent = "Copy";
+                }, 2000);
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+            });
+        }
+    </script>
+</body>
+</html> 
