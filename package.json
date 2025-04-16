@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "check-hipaa": "node simple-hipaa-check.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.20.0"
+  }
+}
