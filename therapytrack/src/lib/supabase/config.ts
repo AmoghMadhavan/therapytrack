@@ -33,17 +33,59 @@ const isLocalStorageAvailable = () => {
   }
 };
 
+// Create a custom storage implementation with better error handling
+const createCustomStorage = () => {
+  // Check if localStorage is available
+  if (!isLocalStorageAvailable()) {
+    // Return a memory-based implementation if localStorage isn't available
+    const memoryStorage: Record<string, string> = {};
+    return {
+      getItem: (key: string) => memoryStorage[key] || null,
+      setItem: (key: string, value: string) => { memoryStorage[key] = value },
+      removeItem: (key: string) => { delete memoryStorage[key] }
+    };
+  }
+
+  // Use localStorage with error handling
+  return {
+    getItem: (key: string) => {
+      try {
+        return localStorage.getItem(key);
+      } catch (e) {
+        console.error('[SUPABASE] Error getting item from localStorage', e);
+        return null;
+      }
+    },
+    setItem: (key: string, value: string) => {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.error('[SUPABASE] Error setting item in localStorage', e);
+      }
+    },
+    removeItem: (key: string) => {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.error('[SUPABASE] Error removing item from localStorage', e);
+      }
+    }
+  };
+};
+
 // Initialize Supabase client with auto-refresh sessions
 let supabase: SupabaseClient;
 
 try {
   // Configure client with all authentication options explicitly set
+  const customStorage = createCustomStorage();
+  
   const options = {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      storage: isLocalStorageAvailable() ? localStorage : undefined,
+      storage: customStorage,
       storageKey: 'therapytrack_supabase_auth', // Custom storage key for easier debugging
       flowType: 'pkce' as const // More secure authentication flow
     },
@@ -53,6 +95,10 @@ try {
     // Set reasonable timeouts
     realtime: {
       timeout: 60000 // 60 seconds
+    },
+    // Improve default headers to avoid CORS issues
+    headers: {
+      'X-Client-Info': 'supabase-js/2.43.0'
     }
   };
   

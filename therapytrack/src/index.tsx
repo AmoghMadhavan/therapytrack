@@ -7,7 +7,7 @@ import reportWebVitals from './reportWebVitals';
 import { verifyEncryptionSetup } from './utils/encryption';
 
 // Clear storage if application version doesn't match
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1'; // Increment version to force a storage clear
 const APP_VERSION_KEY = 'theriq_app_version';
 
 // Check and clear storage if version mismatch
@@ -18,7 +18,14 @@ const handleAppVersionChange = (): void => {
     // If version changed or doesn't exist, clear all browser storage
     if (storedVersion !== APP_VERSION) {
       console.log('App version changed, clearing storage');
-      localStorage.clear();
+      
+      // Clear localStorage excluding the version key itself
+      Object.keys(localStorage).forEach(key => {
+        if (key !== APP_VERSION_KEY) {
+          localStorage.removeItem(key);
+        }
+      });
+      
       sessionStorage.clear();
       
       // Set the new version
@@ -39,6 +46,12 @@ const initializeApp = (): void => {
   
   // Verify encryption setup
   verifyEncryptionSetup();
+  
+  // Add event listeners for handling authentication issues
+  window.addEventListener('supabase.auth.error', (event) => {
+    console.error('Auth error event:', event);
+    // Consider redirecting to login page or showing error notification
+  });
 };
 
 // Run initialization

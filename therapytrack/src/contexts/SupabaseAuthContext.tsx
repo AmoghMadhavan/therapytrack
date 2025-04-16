@@ -32,15 +32,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   // This effect runs only once on component mount
   useEffect(() => {
     console.log('[AUTH] AuthProvider initialized');
     
+    // Prevent double initialization
+    if (initialized) {
+      console.log('[AUTH] Already initialized, skipping');
+      return;
+    }
+    
     // First, attempt to recover session from localStorage
     const initializeAuth = async () => {
       try {
         console.log('[AUTH] Getting initial session');
+        
+        // Use a more reliable session fetch
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -64,9 +73,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         setLoading(false);
+        setInitialized(true);
       } catch (e) {
         console.error('[AUTH] Error during initialization:', e);
         setLoading(false);
+        setInitialized(true);
       }
     };
 
@@ -108,14 +119,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
     const authListener = setupAuthListener();
     
+    // Periodically check and refresh session if needed (every 5 minutes)
+    const intervalId = setInterval(async () => {
+      console.log('[AUTH] Refreshing session check');
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session && (!session || data.session.access_token !== session.access_token)) {
+          console.log('[AUTH] Updating session from refresh check');
+          setSession(data.session);
+          setCurrentUser(data.session.user);
+        }
+      } catch (error) {
+        console.error('[AUTH] Error refreshing session:', error);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
     // Cleanup function
     return () => {
       console.log('[AUTH] Cleaning up auth listener');
       if (authListener && authListener.subscription) {
         authListener.subscription.unsubscribe();
       }
+      clearInterval(intervalId);
     };
-  }, []);
+  }, [initialized, session]);
 
   // Debug effect to log state changes
   useEffect(() => {
