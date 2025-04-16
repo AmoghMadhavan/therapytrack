@@ -32,24 +32,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
-  // This effect runs only once on component mount
+  // Initialize auth state and set up listeners
   useEffect(() => {
     console.log('[AUTH] AuthProvider initialized');
     
-    // Prevent double initialization
-    if (initialized) {
-      console.log('[AUTH] Already initialized, skipping');
-      return;
-    }
-    
-    // First, attempt to recover session from localStorage
+    // Get initial session
     const initializeAuth = async () => {
       try {
         console.log('[AUTH] Getting initial session');
-        
-        // Use a more reliable session fetch
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -73,81 +64,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         setLoading(false);
-        setInitialized(true);
       } catch (e) {
         console.error('[AUTH] Error during initialization:', e);
         setLoading(false);
-        setInitialized(true);
       }
     };
 
-    // Set up the auth state change listener
-    const setupAuthListener = () => {
-      console.log('[AUTH] Setting up auth listener');
-      
-      const { data: authListener } = supabase.auth.onAuthStateChange(
-        async (event, sessionData) => {
-          console.log('[AUTH] Auth state change event:', event, sessionData ? 'session exists' : 'no session');
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, sessionData) => {
+        console.log('[AUTH] Auth state change event:', event);
+        
+        if (sessionData) {
+          console.log('[AUTH] Setting user and session from auth change event');
+          setSession(sessionData);
+          setCurrentUser(sessionData.user);
           
-          if (sessionData) {
-            console.log('[AUTH] Setting user and session from auth change event');
-            setSession(sessionData);
-            setCurrentUser(sessionData.user);
-            
-            // If user just signed in, set up their data
-            if (event === 'SIGNED_IN') {
-              try {
-                console.log('[AUTH] Setting up data after SIGNED_IN event');
-                await checkAndSetupTables();
-                await initializeDefaultData(sessionData.user.id);
-              } catch (error) {
-                console.error('[AUTH] Error setting up data after sign in:', error);
-              }
+          // If user just signed in, set up their data
+          if (event === 'SIGNED_IN') {
+            try {
+              console.log('[AUTH] Setting up data after SIGNED_IN event');
+              await checkAndSetupTables();
+              await initializeDefaultData(sessionData.user.id);
+            } catch (error) {
+              console.error('[AUTH] Error setting up data after sign in:', error);
             }
-          } else if (event === 'SIGNED_OUT') {
-            console.log('[AUTH] Clearing user and session after SIGNED_OUT event');
-            setSession(null);
-            setCurrentUser(null);
           }
+        } else if (event === 'SIGNED_OUT') {
+          console.log('[AUTH] Clearing user and session after SIGNED_OUT event');
+          setSession(null);
+          setCurrentUser(null);
         }
-      );
-      
-      return authListener;
-    };
-    
-    // Run initialization and set up listener
-    initializeAuth();
-    const authListener = setupAuthListener();
-    
-    // Periodically check and refresh session if needed (every 5 minutes)
-    const intervalId = setInterval(async () => {
-      console.log('[AUTH] Refreshing session check');
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (data.session && (!session || data.session.access_token !== session.access_token)) {
-          console.log('[AUTH] Updating session from refresh check');
-          setSession(data.session);
-          setCurrentUser(data.session.user);
-        }
-      } catch (error) {
-        console.error('[AUTH] Error refreshing session:', error);
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    );
+    
+    // Initialize auth
+    initializeAuth();
     
     // Cleanup function
     return () => {
       console.log('[AUTH] Cleaning up auth listener');
-      if (authListener && authListener.subscription) {
+      if (authListener.subscription) {
         authListener.subscription.unsubscribe();
       }
-      clearInterval(intervalId);
     };
-  }, [initialized, session]);
-
-  // Debug effect to log state changes
-  useEffect(() => {
-    console.log('[AUTH] Auth state updated, user:', currentUser ? 'exists' : 'null');
-  }, [currentUser, session]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     console.log('[AUTH] Attempting to sign in with email');
@@ -158,12 +119,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('[AUTH] Sign in error:', response.error.message);
       } else {
         console.log('[AUTH] Sign in successful');
-        
-        // Manually update state immediately for better UX
-        if (response.data.session) {
-          setSession(response.data.session);
-          setCurrentUser(response.data.user);
-        }
       }
       
       return response;
@@ -182,12 +137,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('[AUTH] Sign up error:', response.error.message);
       } else {
         console.log('[AUTH] Sign up successful');
-        
-        // Immediately update state if sign up auto-logs in
-        if (response.data.session) {
-          setSession(response.data.session);
-          setCurrentUser(response.data.user);
-        }
       }
       
       return response;
@@ -205,9 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error) {
         console.error('[AUTH] Error signing out:', error.message);
       } else {
-        console.log('[AUTH] Successfully signed out, clearing auth state');
-        setSession(null);
-        setCurrentUser(null);
+        console.log('[AUTH] Successfully signed out');
       }
     } catch (error) {
       console.error('[AUTH] Exception during sign out:', error);
