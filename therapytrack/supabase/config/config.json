@@ -1,0 +1,40 @@
+{
+  "project_id": "your-project-id",
+  "api": {
+    "http_url": "https://your-project-id.supabase.co",
+    "ws_url": "wss://your-project-id.supabase.co",
+    "service_role_key": "your-service-role-key",
+    "anon_key": "your-anon-key"
+  },
+  "db": {
+    "host": "db.your-project-id.supabase.co",
+    "port": 5432,
+    "schema": "public",
+    "max_connections": 10
+  },
+  "auth": {
+    "enabled": true,
+    "site_url": "http://localhost:3000"
+  },
+  "storage": {
+    "enabled": true,
+    "buckets": [
+      {
+        "name": "profile-photos",
+        "public": false
+      },
+      {
+        "name": "session-attachments",
+        "public": false
+      },
+      {
+        "name": "task-attachments",
+        "public": false
+      },
+      {
+        "name": "message-attachments",
+        "public": false
+      }
+    ]
+  }
+} 
