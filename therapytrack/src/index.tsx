@@ -15,14 +15,32 @@ const handleAppVersionChange = (): void => {
   try {
     const storedVersion = localStorage.getItem(APP_VERSION_KEY);
     
-    // If version changed or doesn't exist, clear all browser storage
-    if (storedVersion !== APP_VERSION) {
-      console.log('[APP] Version changed, clearing storage');
+    // Only clear if version is set AND different (not on first run)
+    if (storedVersion && storedVersion !== APP_VERSION) {
+      console.log(`[APP] Version changed from ${storedVersion} to ${APP_VERSION}, clearing storage`);
+      
       localStorage.clear();
       sessionStorage.clear();
       
       // Set the new version
       localStorage.setItem(APP_VERSION_KEY, APP_VERSION);
+    } 
+    // If no version stored yet, just set it without clearing
+    else if (!storedVersion) {
+      console.log('[APP] First run, setting app version without clearing storage');
+      localStorage.setItem(APP_VERSION_KEY, APP_VERSION);
+    }
+    
+    // Debug localStorage contents (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[APP] LocalStorage check:');
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          const value = localStorage.getItem(key);
+          console.log(`[APP] - ${key}: ${value ? (value.length > 50 ? value.substring(0, 50) + '...' : value) : 'null'}`);
+        }
+      }
     }
   } catch (e) {
     console.warn('[APP] Version check failed:', e);

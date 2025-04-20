@@ -26,7 +26,26 @@ const getEncryptionKey = (): string => {
 const isEncryptionDisabled = (): boolean => {
   // Look for a specific localStorage flag that completely disables encryption
   try {
-    return localStorage.getItem('DISABLE_ENCRYPTION') === 'true';
+    // Check for our flag
+    if (localStorage.getItem('DISABLE_ENCRYPTION') === 'true') {
+      return true;
+    }
+    
+    // If we're having problems or in development mode, automatically disable
+    // encryption if localStorage has an unreadable session
+    if (process.env.NODE_ENV === 'development') {
+      const authKey = 'therapytrack_supabase_auth';
+      const sessionData = localStorage.getItem(authKey);
+      
+      // If we have data but it doesn't look like proper JSON (might be encrypted)
+      if (sessionData && (!sessionData.startsWith('{') || !sessionData.includes('"access_token"'))) {
+        console.log('[STORAGE] Found encrypted session, temporarily disabling encryption for recovery');
+        localStorage.setItem('DISABLE_ENCRYPTION', 'true');
+        return true;
+      }
+    }
+    
+    return false;
   } catch (e) {
     return false;
   }
@@ -82,44 +101,57 @@ const decryptSessionData = (encryptedData: string): string => {
 // Custom encrypted storage implementation
 const encryptedStorage = {
   getItem: (key: string): string | null => {
+    console.log(`[STORAGE] Attempting to get item: ${key}`);
+    
     try {
-      // First, attempt to get the encrypted data
+      // First, attempt to get the data
       const item = localStorage.getItem(key);
-      if (!item) return null;
+      
+      // If nothing found, return null
+      if (!item) {
+        console.log(`[STORAGE] No data found for key: ${key}`);
+        return null;
+      }
+      
+      console.log(`[STORAGE] Raw data found for key ${key}, length: ${item.length}, starts with: ${item.substring(0, 20)}...`);
+      
+      // Check if it looks like JSON already (not encrypted)
+      if (item.startsWith('{') && (item.includes('"access_token"') || item.includes('"expires_at"'))) {
+        console.log(`[STORAGE] Data appears to be unencrypted JSON, returning as-is`);
+        return item;
+      }
       
       // Try to decrypt it
       const decrypted = decryptSessionData(item);
       
-      // If we have a result, return it
-      if (decrypted && decrypted.length > 0) {
+      // If we have a valid-looking result, return it
+      if (decrypted && 
+          decrypted.length > 0 && 
+          decrypted.startsWith('{') && 
+          (decrypted.includes('"access_token"') || decrypted.includes('"expires_at"'))) {
+        console.log(`[STORAGE] Successfully decrypted data for key: ${key}`);
         return decrypted;
+      } else if (decrypted) {
+        console.log(`[STORAGE] Decryption produced data but it doesn't look valid, length: ${decrypted.length}`);
       }
       
-      // If decryption failed, the data might not be encrypted at all
-      // Try to parse it as JSON to see if it's a valid session
+      // If decryption failed or produced invalid data, the data might not be encrypted
+      // or might be encrypted with a different key
+      console.log(`[STORAGE] Attempting to use raw data as fallback`);
+      
+      // Check if raw data is valid JSON as a last resort
       try {
-        // Check if the raw data is valid JSON (might not be encrypted)
         JSON.parse(item);
-        console.log('[STORAGE] Found unencrypted session data');
-        return item; // Return raw data if it seems to be valid JSON
+        console.log(`[STORAGE] Raw data is valid JSON, using it`);
+        return item;
       } catch (parseError) {
-        // Not valid JSON, probably corrupted
-        console.error('[STORAGE] Unable to parse stored session data', parseError);
-        return null;
+        // Not valid JSON either
+        console.error(`[STORAGE] Raw data is not valid JSON, storage recovery failed`);
       }
+      
+      return null;
     } catch (error) {
       console.error('[STORAGE] getItem error:', error);
-      
-      // Last resort: try to get the item directly from localStorage
-      try {
-        const rawItem = localStorage.getItem(key);
-        if (rawItem && rawItem.includes('"access_token"')) {
-          return rawItem; // Looks like a session object, return it
-        }
-      } catch (e) {
-        // Do nothing
-      }
-      
       return null;
     }
   },
@@ -225,6 +257,96 @@ try {
   console.error('[SUPABASE] Failed to initialize client:', error);
   // Create a fallback client that will fail gracefully
   supabase = createClient('https://placeholder.supabase.co', 'placeholder');
+}
+
+// Function to diagnose auth issues - can be called from browser console
+const diagnoseAuthStorage = () => {
+  console.log('=== SUPABASE AUTH DIAGNOSTICS ===');
+  
+  try {
+    // Check if localStorage exists and is working
+    const testKey = '_auth_test_key_';
+    localStorage.setItem(testKey, 'test');
+    const testResult = localStorage.getItem(testKey);
+    localStorage.removeItem(testKey);
+    
+    console.log(`localStorage test: ${testResult === 'test' ? 'PASSED' : 'FAILED'}`);
+    
+    // Check for auth data
+    const authKey = 'therapytrack_supabase_auth';
+    const sessionData = localStorage.getItem(authKey);
+    
+    console.log(`Auth session exists: ${sessionData ? 'YES' : 'NO'}`);
+    
+    if (sessionData) {
+      console.log(`Auth data length: ${sessionData.length}`);
+      console.log(`First 50 chars: ${sessionData.substring(0, 50)}...`);
+      console.log(`Looks like JSON: ${sessionData.startsWith('{') ? 'YES' : 'NO'}`);
+      console.log(`Contains access token: ${sessionData.includes('"access_token"') ? 'YES' : 'NO'}`);
+      
+      try {
+        // Try with encryption enabled
+        const encryptionKey = getEncryptionKey();
+        try {
+          const decrypted = CryptoJS.AES.decrypt(sessionData, encryptionKey);
+          const decryptedText = decrypted.toString(CryptoJS.enc.Utf8);
+          console.log(`Decryption attempt: ${decryptedText ? 'SUCCESS' : 'FAILED'}`);
+          console.log(`Decrypted data starts with: ${decryptedText.substring(0, 30)}...`);
+        } catch (e) {
+          console.log(`Decryption error: ${e.message}`);
+        }
+      } catch (e) {
+        console.log(`Error checking encryption: ${e.message}`);
+      }
+    }
+    
+    // Check for app version
+    const appVersionKey = 'theriq_app_version';
+    const appVersion = localStorage.getItem(appVersionKey);
+    console.log(`App version in storage: ${appVersion || 'NOT SET'}`);
+    
+    // Check encryption status
+    console.log(`Encryption disabled: ${isEncryptionDisabled() ? 'YES' : 'NO'}`);
+    
+    // Get session directly from Supabase
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.log(`Supabase session check failed: ${error.message}`);
+      } else {
+        console.log(`Supabase session exists: ${data.session ? 'YES' : 'NO'}`);
+        if (data.session) {
+          console.log(`Session user ID: ${data.session.user.id}`);
+          const expiresAt = data.session.expires_at || 0;
+          const now = Math.floor(Date.now() / 1000);
+          const timeToExpiry = expiresAt - now;
+          console.log(`Session expires in: ${timeToExpiry} seconds`);
+        }
+      }
+    });
+  } catch (e) {
+    console.error(`Diagnostic error: ${e.message}`);
+  }
+  
+  console.log('=== END DIAGNOSTICS ===');
+  
+  return 'Diagnostics complete - check console for results';
+};
+
+// Add it to the window object for easy access from browser console
+if (typeof window !== 'undefined') {
+  (window as any).diagnoseAuthStorage = diagnoseAuthStorage;
+  (window as any).disableEncryption = () => {
+    localStorage.setItem('DISABLE_ENCRYPTION', 'true');
+    return 'Encryption disabled. Please reload the page.';
+  };
+  (window as any).enableEncryption = () => {
+    localStorage.removeItem('DISABLE_ENCRYPTION');
+    return 'Encryption enabled. Please reload the page.';
+  };
+  (window as any).clearAndReset = () => {
+    localStorage.clear();
+    return 'Storage cleared. Please reload the page.';
+  };
 }
 
 // Export the initialized client
