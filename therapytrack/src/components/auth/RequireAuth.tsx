@@ -11,18 +11,18 @@ interface RequireAuthProps {
  * Redirects to login page if user is not authenticated
  */
 const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
-  const { currentUser, loading, isAuthenticated } = useAuth();
+  const { currentUser, loading } = useAuth();
   const location = useLocation();
   
   // Add debug logging
   useEffect(() => {
     console.log('[AUTH-ROUTE] RequireAuth rendering with state:', { 
       loading, 
-      userExists: !!currentUser, 
-      isAuthenticated,
+      userExists: !!currentUser,
+      authenticated: !!currentUser,
       pathname: location.pathname 
     });
-  }, [loading, currentUser, isAuthenticated, location]);
+  }, [loading, currentUser, location]);
 
   // If still loading auth state, show spinner but with a max timeout
   if (loading) {
