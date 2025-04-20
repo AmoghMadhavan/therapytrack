@@ -29,12 +29,39 @@ const Debug = lazy(() => import('./pages/auth/Debug'));
 const TestSupabase = lazy(() => import('./pages/auth/TestSupabase'));
 const TestDatabaseConnection = lazy(() => import('./pages/TestDatabaseConnection'));
 
-// Loading fallback
-const LoadingFallback = () => (
-  <div className="flex justify-center items-center min-h-screen">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-  </div>
-);
+// Loading fallback with timeout to prevent infinite loading
+const LoadingFallback = () => {
+  const [showTimeoutMessage, setShowTimeoutMessage] = React.useState(false);
+  
+  // If loading takes more than 5 seconds, show additional message
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTimeoutMessage(true);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  return (
+    <div className="flex flex-col justify-center items-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mb-4"></div>
+      <div className="text-gray-700">Loading application...</div>
+      
+      {showTimeoutMessage && (
+        <div className="mt-4 max-w-md text-center text-gray-500">
+          <p>It's taking longer than expected to load.</p>
+          <p className="mt-2">If this continues, try refreshing the page or check your internet connection.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 function App() {
   const isDevelopment = process.env.NODE_ENV === 'development';
