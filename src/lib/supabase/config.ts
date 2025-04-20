@@ -1,8 +1,69 @@
+import CryptoJS from 'crypto-js';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Get environment variables or use fallback values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+// Handle environment variables safely
+// @ts-ignore -- Ignoring import.meta.env TypeScript error as it's injected by Vite at build time
+const env = typeof import.meta.env !== 'undefined' ? import.meta.env : {};
+const supabaseUrl = (env as any).VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = (env as any).VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+// Encryption functions for session storage
+const encryptSessionData = (data: string): string => {
+  try {
+    const encryptionKey = (env as any).VITE_ENCRYPTION_SECRET || 'fallback-encryption-key';
+    return CryptoJS.AES.encrypt(data, encryptionKey).toString();
+  } catch (error) {
+    console.error('[STORAGE] Encryption error:', error);
+    return data; // Fallback to unencrypted on error
+  }
+};
+
+const decryptSessionData = (encryptedData: string): string => {
+  try {
+    const encryptionKey = (env as any).VITE_ENCRYPTION_SECRET || 'fallback-encryption-key';
+    const decrypted = CryptoJS.AES.decrypt(encryptedData, encryptionKey);
+    return decrypted.toString(CryptoJS.enc.Utf8);
+  } catch (error) {
+    console.error('[STORAGE] Decryption error:', error);
+    return ''; // Return empty string on decryption failure
+  }
+};
+
+// Custom encrypted storage implementation
+const encryptedStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      const item = localStorage.getItem(key);
+      if (!item) return null;
+      return decryptSessionData(item);
+    } catch (error) {
+      console.error('[STORAGE] getItem error:', error);
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      const encrypted = encryptSessionData(value);
+      localStorage.setItem(key, encrypted);
+    } catch (error) {
+      console.error('[STORAGE] setItem error:', error);
+      // Fallback to unencrypted storage in case of error
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.error('[STORAGE] Fallback setItem error:', e);
+      }
+    }
+  },
+  removeItem: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.error('[STORAGE] removeItem error:', error);
+    }
+  }
+};
 
 // Check if localStorage is available (handles SSR environments)
 const isLocalStorageAvailable = () => {
@@ -27,7 +88,7 @@ try {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      storage: isLocalStorageAvailable() ? localStorage : undefined,
+      storage: isLocalStorageAvailable() ? encryptedStorage : undefined,
       storageKey: 'therapytrack_supabase_auth',
       flowType: 'pkce' as const, // More secure authentication flow
       debug: process.env.NODE_ENV === 'development' // Enable auth debugging in development
@@ -41,7 +102,7 @@ try {
     },
     // Better error handling
     db: {
-      schema: 'public'
+      schema: 'public' as const
     }
   };
   

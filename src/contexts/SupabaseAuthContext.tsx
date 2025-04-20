@@ -218,18 +218,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = async () => {
     console.log('[AUTH] Attempting to sign out');
     try {
+      // First, manually clear session state
+      setSession(null);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      
+      // Manually clear storage - important for encrypted storage
+      localStorage.removeItem('therapytrack_supabase_auth');
+      
+      // Then call the API to complete server-side sign out
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('[AUTH] Error signing out:', error.message);
+        // If API sign out fails, still proceed with client-side cleanup
       } else {
-        console.log('[AUTH] Successfully signed out, clearing auth state');
-        setSession(null);
-        setCurrentUser(null);
-        setIsAuthenticated(false);
+        console.log('[AUTH] Successfully signed out, auth state already cleared');
+      }
+      
+      // Force navigation to login page to ensure clean state
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
       }
     } catch (error) {
       console.error('[AUTH] Exception during sign out:', error);
+      // Still try to reset the client state
+      setSession(null);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
       throw error;
     }
   };

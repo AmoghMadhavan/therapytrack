@@ -3,6 +3,8 @@
     "check-hipaa": "node simple-hipaa-check.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.20.0"
+    "@supabase/supabase-js": "^2.20.0",
+    "@types/crypto-js": "^4.2.2",
+    "crypto-js": "^4.2.0"
   }
 }
