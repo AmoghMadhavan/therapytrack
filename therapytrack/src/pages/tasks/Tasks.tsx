@@ -2,80 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageLayout from '../../components/layout/PageLayout';
 import { useAuth } from '../../contexts/SupabaseAuthContext';
-
-// Mock data - would be replaced with actual database fetch
-const mockTasks = [
-  {
-    id: '1',
-    clientId: '1',
-    clientName: 'Jane Smith',
-    title: 'Daily Speech Practice',
-    description: 'Practice /s/ sounds in word-initial position for 10 minutes daily.',
-    assignedDate: new Date('2023-05-28').toISOString(),
-    dueDate: new Date('2023-06-04').toISOString(),
-    status: 'assigned',
-    priority: 'high',
-    goalArea: ['Articulation'],
-    frequency: 'daily'
-  },
-  {
-    id: '2',
-    clientId: '2',
-    clientName: 'Michael Johnson',
-    title: 'Sensory Integration Exercises',
-    description: 'Complete the provided sensory diet activities each morning.',
-    assignedDate: new Date('2023-05-30').toISOString(),
-    dueDate: new Date('2023-06-06').toISOString(),
-    status: 'in-progress',
-    priority: 'medium',
-    goalArea: ['Sensory Processing'],
-    frequency: 'daily'
-  },
-  {
-    id: '3',
-    clientId: '3',
-    clientName: 'Emma Wilson',
-    title: 'Fine Motor Worksheet',
-    description: 'Complete the attached worksheet to practice pencil control and hand strength.',
-    assignedDate: new Date('2023-05-25').toISOString(),
-    dueDate: new Date('2023-06-01').toISOString(),
-    status: 'completed',
-    priority: 'medium',
-    goalArea: ['Fine Motor Skills'],
-    frequency: 'once',
-    completionDetails: {
-      completedDate: new Date('2023-05-31').toISOString(),
-      notes: 'Client completed with minimal assistance, showing improvement in grip strength.',
-      rating: 4
-    }
-  },
-  {
-    id: '4',
-    clientId: '1',
-    clientName: 'Jane Smith',
-    title: 'Reading Comprehension Story',
-    description: 'Read the attached story and answer the comprehension questions.',
-    assignedDate: new Date('2023-05-22').toISOString(),
-    dueDate: new Date('2023-05-29').toISOString(),
-    status: 'overdue',
-    priority: 'low',
-    goalArea: ['Language', 'Reading Comprehension'],
-    frequency: 'once'
-  }
-];
+import { getTasksByTherapist, Task } from '../../services/taskService';
+import { formatDate } from '../../utils/dateUtils';
 
 const Tasks: React.FC = () => {
   const { currentUser } = useAuth();
-  const [tasks, setTasks] = useState(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // This would be replaced with an actual database fetch
-    setLoading(false);
-  }, []);
+    const fetchTasks = async () => {
+      if (!currentUser) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedTasks = await getTasksByTherapist(currentUser.id);
+        setTasks(fetchedTasks);
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+        setError('Failed to load tasks. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [currentUser]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -242,7 +199,7 @@ const Tasks: React.FC = () => {
                                     <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                     </svg>
-                                    {task.goalArea.join(', ')}
+                                    {task.goal_areas?.join(', ') || 'No goals'}
                                   </p>
                                 </div>
                                 <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
