@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/SupabaseAuthContext';
 import { createTask, getTaskById, updateTask, Task } from '../../services/taskService';
 import { getTodayAsISODate, addDaysToDate } from '../../utils/dateUtils';
-import Spinner from '../../components/Spinner';
+import Spinner from '../../components/ui/Spinner';
 
 const TaskForm: React.FC = () => {
   const navigate = useNavigate();
