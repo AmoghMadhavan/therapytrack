@@ -19,6 +19,9 @@ export interface Task {
   };
   created_at?: string;
   updated_at?: string;
+  clientName?: string;
+  clients?: { id: string; firstName: string; lastName: string };
+  dueDate?: string;
 }
 
 // Get all tasks for a therapist

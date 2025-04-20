@@ -85,7 +85,7 @@ const Tasks: React.FC = () => {
 
   // Sort tasks by due date (most urgent first)
   const sortedTasks = [...filteredTasks].sort((a, b) => 
-    new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+    new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
   );
 
   return (
@@ -207,7 +207,7 @@ const Tasks: React.FC = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                   </svg>
                                   <p>
-                                    Due: {new Date(task.dueDate).toLocaleDateString()}
+                                    Due: {new Date(task.due_date).toLocaleDateString()}
                                   </p>
                                 </div>
                               </div>
