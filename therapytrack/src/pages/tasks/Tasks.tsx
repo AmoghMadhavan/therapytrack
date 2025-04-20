@@ -74,8 +74,8 @@ const Tasks: React.FC = () => {
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = 
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchTerm.toLowerCase());
+      (task.clientName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (task.description?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     
     const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
     const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
@@ -193,7 +193,7 @@ const Tasks: React.FC = () => {
                                     <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                     </svg>
-                                    {task.clientName}
+                                    {task.clientName || 'Unknown Client'}
                                   </p>
                                   <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
                                     <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -212,7 +212,7 @@ const Tasks: React.FC = () => {
                                 </div>
                               </div>
                               <div className="mt-2">
-                                <p className="text-sm text-gray-500 truncate">{task.description}</p>
+                                <p className="text-sm text-gray-500 truncate">{task.description || ''}</p>
                               </div>
                               {task.status === 'completed' && task.completionDetails && (
                                 <div className="mt-2 sm:flex sm:justify-between">
