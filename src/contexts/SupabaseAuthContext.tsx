@@ -64,11 +64,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     console.log('[AUTH] AuthProvider initialized');
     
+    // Check if localStorage is readable with minimal function
+    const testLocalStorage = () => {
+      try {
+        const testKey = '_auth_test_key_';
+        localStorage.setItem(testKey, 'test');
+        const value = localStorage.getItem(testKey);
+        localStorage.removeItem(testKey);
+        console.log(`[AUTH] localStorage test: ${value === 'test' ? 'PASSED' : 'FAILED'}`);
+        return value === 'test';
+      } catch (e) {
+        console.error('[AUTH] localStorage test failed:', e);
+        return false;
+      }
+    };
+    
+    // Run a quick localStorage test
+    const storageWorks = testLocalStorage();
+    if (!storageWorks) {
+      console.error('[AUTH] localStorage is not working. Authentication persistence will fail.');
+    }
+    
     // First, attempt to recover session
     const initializeAuth = async () => {
       try {
         setLoading(true);
         console.log('[AUTH] Getting initial session');
+        
+        // Try to directly read the auth data from localStorage for debugging
+        try {
+          const rawStorage = localStorage.getItem('therapytrack_supabase_auth');
+          console.log('[AUTH] Raw storage exists:', !!rawStorage);
+          if (rawStorage) {
+            console.log('[AUTH] Raw storage length:', rawStorage.length);
+            console.log('[AUTH] Raw storage excerpt:', rawStorage.substring(0, 50) + '...');
+          }
+        } catch (e) {
+          console.error('[AUTH] Error checking raw storage:', e);
+        }
+        
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -82,7 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setIsAuthenticated(true);
             
             // Check if token is close to expiry and refresh if needed
-            const expiresAt = data.session.expires_at;
+            const expiresAt = data.session.expires_at || 0;
             const now = Math.floor(Date.now() / 1000);
             const timeToExpiry = expiresAt - now;
             console.log(`[AUTH] Session expires in ${timeToExpiry} seconds`);
@@ -93,6 +127,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           } else {
             console.log('[AUTH] No initial session found');
+            
+            // Check for session directly in localStorage as a fallback
+            try {
+              const rawStorage = localStorage.getItem('therapytrack_supabase_auth');
+              if (rawStorage && rawStorage.includes('access_token')) {
+                console.log('[AUTH] Found possible session in localStorage, but Supabase did not detect it');
+                console.log('[AUTH] This might be an encryption/decryption issue');
+              }
+            } catch (e) {
+              // Do nothing
+            }
+            
             setIsAuthenticated(false);
           }
         }
