@@ -214,13 +214,13 @@ const Tasks: React.FC = () => {
                               <div className="mt-2">
                                 <p className="text-sm text-gray-500 truncate">{task.description || ''}</p>
                               </div>
-                              {task.status === 'completed' && task.completionDetails && (
+                              {task.status === 'completed' && task.completion_details && (
                                 <div className="mt-2 sm:flex sm:justify-between">
                                   <p className="flex items-center text-sm text-green-600">
                                     <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    Completed on {new Date(task.completionDetails.completedDate).toLocaleDateString()}
+                                    Completed on {new Date(task.completion_details.completed_date).toLocaleDateString()}
                                   </p>
                                 </div>
                               )}
