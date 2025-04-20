@@ -24,7 +24,13 @@ const getEncryptionKey = (): string => {
 // Check if encryption should be disabled
 // This is for development use only
 const isEncryptionDisabled = (): boolean => {
-  // Look for a specific localStorage flag that completely disables encryption
+  // IMPORTANT: Temporarily disable encryption by default
+  // This ensures session persistence works while debugging
+  // Set to false when HTTPS is implemented
+  return true;
+  
+  // Original code below - uncomment when ready to re-enable encryption
+  /*
   try {
     // Check for our flag
     if (localStorage.getItem('DISABLE_ENCRYPTION') === 'true') {
@@ -49,6 +55,7 @@ const isEncryptionDisabled = (): boolean => {
   } catch (e) {
     return false;
   }
+  */
 };
 
 // Encryption functions for session storage
@@ -201,7 +208,9 @@ try {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      storage: isLocalStorageAvailable() ? encryptedStorage : undefined,
+      // Use direct localStorage without any custom encryption for now
+      // This ensures maximum compatibility and session persistence
+      storage: localStorage,
       storageKey: 'therapytrack_supabase_auth',
       flowType: 'pkce' as const, // More secure authentication flow
       debug: process.env.NODE_ENV === 'development' // Enable auth debugging in development

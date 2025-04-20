@@ -269,8 +269,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setCurrentUser(null);
       setIsAuthenticated(false);
       
-      // Manually clear storage - important for encrypted storage
-      localStorage.removeItem('therapytrack_supabase_auth');
+      // Clear auth data from localStorage for good measure
+      try {
+        localStorage.removeItem('therapytrack_supabase_auth');
+      } catch (e) {
+        console.error('[AUTH] Error clearing localStorage:', e);
+      }
       
       // Then call the API to complete server-side sign out
       const { error } = await supabase.auth.signOut();
@@ -292,7 +296,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(null);
       setCurrentUser(null);
       setIsAuthenticated(false);
-      throw error;
+      
+      // Try to navigate away anyway
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
   };
 
