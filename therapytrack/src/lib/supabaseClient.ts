@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+// This file is maintained for backward compatibility
+// Import and re-export the supabase client from our configured setup
+import { supabase, tableFrom, DB_SCHEMA } from './supabase/config';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey); 
+export { supabase, tableFrom, DB_SCHEMA }; 

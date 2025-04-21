@@ -2,67 +2,56 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageLayout from '../../components/layout/PageLayout';
 import { useAuth } from '../../contexts/SupabaseAuthContext';
+import { getClientsByTherapist } from '../../services/supabaseService';
 
-// Mock client data for development
-const mockClients = [
-  {
-    id: '1',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    diagnosis: ['Speech Delay', 'Developmental Coordination Disorder'],
-    status: 'active',
-    lastSessionDate: new Date('2023-06-01').toISOString(),
-  },
-  {
-    id: '2',
-    firstName: 'Michael',
-    lastName: 'Johnson',
-    diagnosis: ['Autism Spectrum Disorder', 'Sensory Processing'],
-    status: 'active',
-    lastSessionDate: new Date('2023-05-28').toISOString(),
-  },
-  {
-    id: '3',
-    firstName: 'Emma',
-    lastName: 'Wilson',
-    diagnosis: ['Fine Motor Delay', 'Visual Processing'],
-    status: 'active',
-    lastSessionDate: new Date('2023-05-25').toISOString(),
-  },
-  {
-    id: '4',
-    firstName: 'Thomas',
-    lastName: 'Brown',
-    diagnosis: ['Speech Articulation', 'Language Delay'],
-    status: 'active',
-    lastSessionDate: new Date('2023-05-20').toISOString(),
-  },
-  {
-    id: '5',
-    firstName: 'Sophia',
-    lastName: 'Davis',
-    diagnosis: ['Developmental Coordination Disorder'],
-    status: 'inactive',
-    lastSessionDate: new Date('2023-04-15').toISOString(),
-  },
-];
+// Type definition for our client data
+interface Client {
+  id: string;
+  first_name: string;
+  last_name: string;
+  diagnosis?: string[];
+  status: string;
+  last_session_date?: string;
+  // Other fields as needed
+}
 
 const Clients: React.FC = () => {
   const { currentUser } = useAuth();
-  const [clients, setClients] = useState(mockClients);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // This would be replaced with a Supabase fetch
-    setLoading(false);
-  }, []);
+    // Fetch clients from database when component mounts
+    const fetchClients = async () => {
+      if (!currentUser?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getClientsByTherapist(currentUser.id);
+        console.log('Fetched clients:', data);
+        setClients(data || []);
+      } catch (err) {
+        console.error('Error fetching clients:', err);
+        setError('Failed to load clients. Please try refreshing the page.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
+  }, [currentUser]);
 
   const filteredClients = clients.filter(client => {
     const matchesSearch = 
-      `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.diagnosis.some(d => d.toLowerCase().includes(searchTerm.toLowerCase()));
+      `${client.first_name} ${client.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (client.diagnosis && client.diagnosis.some(d => d.toLowerCase().includes(searchTerm.toLowerCase())));
     
     const matchesStatus = filterStatus === 'all' || client.status === filterStatus;
     
@@ -90,6 +79,20 @@ const Clients: React.FC = () => {
         <main>
           <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div className="px-4 py-8 sm:px-0">
+              {error && (
+                <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row justify-between mb-6">
                 <div className="w-full sm:w-1/3 mb-4 sm:mb-0">
                   <label htmlFor="search" className="sr-only">
@@ -142,7 +145,7 @@ const Clients: React.FC = () => {
                             <div className="px-4 py-4 sm:px-6">
                               <div className="flex items-center justify-between">
                                 <p className="text-sm font-medium text-primary-600 truncate">
-                                  {client.firstName} {client.lastName}
+                                  {client.first_name} {client.last_name}
                                 </p>
                                 <div className="ml-2 flex-shrink-0 flex">
                                   <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -162,7 +165,7 @@ const Clients: React.FC = () => {
                                     <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                    {client.diagnosis.join(', ')}
+                                    {client.diagnosis?.join(', ') || 'No diagnosis'}
                                   </p>
                                 </div>
                                 <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
@@ -170,7 +173,9 @@ const Clients: React.FC = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                   </svg>
                                   <p>
-                                    Last session: {new Date(client.lastSessionDate).toLocaleDateString()}
+                                    Last session: {client.last_session_date 
+                                      ? new Date(client.last_session_date).toLocaleDateString() 
+                                      : 'No sessions yet'}
                                   </p>
                                 </div>
                               </div>
