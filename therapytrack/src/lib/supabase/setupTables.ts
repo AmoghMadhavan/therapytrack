@@ -1,4 +1,4 @@
-import { supabase } from './config';
+import { supabase, tableFrom } from './config';
 
 export const checkAndSetupTables = async () => {
   console.log('Checking and setting up necessary database tables...');
@@ -7,7 +7,7 @@ export const checkAndSetupTables = async () => {
     // Check if profiles table exists and has data
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
+      .from(tableFrom('profiles'))
       .select('*')
       .limit(1);
       
@@ -21,7 +21,7 @@ export const checkAndSetupTables = async () => {
     // Check if clients table exists
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data: clientsData, error: clientsError } = await supabase
-      .from('clients')
+      .from(tableFrom('clients'))
       .select('*')
       .limit(1);
       
@@ -35,7 +35,7 @@ export const checkAndSetupTables = async () => {
     // Check if sessions table exists
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data: sessionsData, error: sessionsError } = await supabase
-      .from('sessions')
+      .from(tableFrom('sessions'))
       .select('*')
       .limit(1);
       
@@ -46,6 +46,34 @@ export const checkAndSetupTables = async () => {
       console.log('Sessions table exists');
     }
     
+    // Check if tasks table exists
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { data: tasksData, error: tasksError } = await supabase
+      .from(tableFrom('tasks'))
+      .select('*')
+      .limit(1);
+      
+    if (tasksError && tasksError.code === '42P01') { // Table doesn't exist
+      console.log('Tasks table does not exist, creating it...');
+      await createTasksTable();
+    } else {
+      console.log('Tasks table exists');
+    }
+    
+    // Check if goals table exists
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { data: goalsData, error: goalsError } = await supabase
+      .from(tableFrom('goals'))
+      .select('*')
+      .limit(1);
+      
+    if (goalsError && goalsError.code === '42P01') { // Table doesn't exist
+      console.log('Goals table does not exist, creating it...');
+      await createGoalsTable();
+    } else {
+      console.log('Goals table exists');
+    }
+    
     return { success: true, message: 'Table check/setup completed successfully' };
   } catch (error) {
     console.error('Error in table setup:', error);
@@ -54,56 +82,25 @@ export const checkAndSetupTables = async () => {
 };
 
 const createProfilesTable = async () => {
-  // This is a simplified version for testing - in production, use proper migrations
-  const { error } = await supabase.rpc('create_profiles_table', {});
-  
-  if (error) {
-    console.error('Error creating profiles table:', error);
-    // Fallback direct SQL approach using service role if available
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const createTableSQL = `
-        CREATE TABLE IF NOT EXISTS profiles (
-          id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-          email TEXT NOT NULL,
-          display_name TEXT,
-          role TEXT NOT NULL DEFAULT 'therapist',
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          last_login TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
-      `;
-      
-      // Note: This might not work due to permissions, would require service role
-      await supabase.auth.getSession().then(async (session) => {
-        if (session.data.session) {
-          // Attempting to create table as authenticated user
-          console.log('Attempting to create profiles table as authenticated user');
-        }
-      });
-    } catch (sqlError) {
-      console.error('Error in SQL fallback for profiles table:', sqlError);
-    }
-  }
+  console.log('The profiles table should have been created with the SQL schema. This is a fallback only.');
+  // This is now using the therapy schema, but this won't be called normally
+  // as the tables are already created with the SQL script
 };
 
 const createClientsTable = async () => {
-  // This is a simplified version for testing - in production, use proper migrations
-  const { error } = await supabase.rpc('create_clients_table', {});
-  
-  if (error) {
-    console.error('Error creating clients table:', error);
-    // Actual table creation would need appropriate permissions
-  }
+  console.log('The clients table should have been created with the SQL schema. This is a fallback only.');
 };
 
 const createSessionsTable = async () => {
-  // This is a simplified version for testing - in production, use proper migrations
-  const { error } = await supabase.rpc('create_sessions_table', {});
-  
-  if (error) {
-    console.error('Error creating sessions table:', error);
-    // Actual table creation would need appropriate permissions
-  }
+  console.log('The sessions table should have been created with the SQL schema. This is a fallback only.');
+};
+
+const createTasksTable = async () => {
+  console.log('The tasks table should have been created with the SQL schema. This is a fallback only.');
+};
+
+const createGoalsTable = async () => {
+  console.log('The goals table should have been created with the SQL schema. This is a fallback only.');
 };
 
 export const initializeDefaultData = async (userId: string) => {
@@ -113,7 +110,7 @@ export const initializeDefaultData = async (userId: string) => {
     // Check if user has a profile, create if not
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
+      .from(tableFrom('profiles'))
       .select('*')
       .eq('id', userId)
       .single();
@@ -121,7 +118,7 @@ export const initializeDefaultData = async (userId: string) => {
     if (profileError && profileError.code === 'PGRST116') { // Not found
       // Create default profile
       const { error: insertError } = await supabase
-        .from('profiles')
+        .from(tableFrom('profiles'))
         .insert([{
           id: userId,
           email: 'user@example.com', // This would be the actual user email

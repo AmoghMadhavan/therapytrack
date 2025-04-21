@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase/config';
+import { supabase, tableFrom } from '../lib/supabase/config';
 import { PostgrestError } from '@supabase/supabase-js';
 
 // Timestamp utility functions
@@ -9,7 +9,7 @@ export const timestampToDate = (timestamp: string) => new Date(timestamp);
 // Client operations
 export const getClients = async (therapistId: string) => {
   const { data, error } = await supabase
-    .from('clients')
+    .from(tableFrom('clients'))
     .select('*')
     .eq('therapist_id', therapistId);
   
@@ -19,7 +19,7 @@ export const getClients = async (therapistId: string) => {
 
 export const getClient = async (id: string) => {
   const { data, error } = await supabase
-    .from('clients')
+    .from(tableFrom('clients'))
     .select('*')
     .eq('id', id)
     .single();
@@ -63,7 +63,7 @@ export const createClient = async (clientData: any) => {
   });
 
   const { data, error } = await supabase
-    .from('clients')
+    .from(tableFrom('clients'))
     .insert([mappedData])
     .select()
     .single();
@@ -109,7 +109,7 @@ export const updateClient = async (id: string, clientData: any) => {
   });
 
   const { data, error } = await supabase
-    .from('clients')
+    .from(tableFrom('clients'))
     .update(mappedData)
     .eq('id', id)
     .select()
@@ -124,7 +124,7 @@ export const updateClient = async (id: string, clientData: any) => {
 
 export const deleteClient = async (id: string) => {
   const { error } = await supabase
-    .from('clients')
+    .from(tableFrom('clients'))
     .delete()
     .eq('id', id);
   
@@ -137,7 +137,7 @@ export const getSessions = async (clientId: string) => {
   try {
     console.log(`Fetching sessions for clientId: ${clientId}`);
     const { data, error } = await supabase
-      .from('sessions')
+      .from(tableFrom('sessions'))
       .select('*')
       .eq('clientId', clientId);
     
@@ -158,7 +158,7 @@ export const getSession = async (id: string) => {
   try {
     console.log(`Fetching session with id: ${id}`);
     const { data, error } = await supabase
-      .from('sessions')
+      .from(tableFrom('sessions'))
       .select('*')
       .eq('id', id)
       .single();
@@ -192,7 +192,7 @@ export const createSession = async (sessionData: any) => {
     );
     
     const { data, error } = await supabase
-      .from('sessions')
+      .from(tableFrom('sessions'))
       .insert([sessionData])
       .select()
       .single();
@@ -215,7 +215,7 @@ export const updateSession = async (id: string, sessionData: any) => {
     console.log(`Updating session with id: ${id}`);
     
     const { data, error } = await supabase
-      .from('sessions')
+      .from(tableFrom('sessions'))
       .update(sessionData)
       .eq('id', id)
       .select()
@@ -236,7 +236,7 @@ export const updateSession = async (id: string, sessionData: any) => {
 
 export const deleteSession = async (id: string) => {
   const { error } = await supabase
-    .from('sessions')
+    .from(tableFrom('sessions'))
     .delete()
     .eq('id', id);
   
@@ -247,17 +247,17 @@ export const deleteSession = async (id: string) => {
 // Task operations
 export const getTasks = async (clientId: string) => {
   const { data, error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .select('*')
-    .eq('clientId', clientId);
+    .eq('client_id', clientId);
   
   if (error) throw error;
-  return data;
+  return data || [];
 };
 
 export const getTask = async (id: string) => {
   const { data, error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .select('*')
     .eq('id', id)
     .single();
@@ -292,7 +292,7 @@ export const createTask = async (taskData: any) => {
   });
 
   const { data, error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .insert([mappedData])
     .select()
     .single();
@@ -329,7 +329,7 @@ export const updateTask = async (id: string, taskData: any) => {
   });
 
   const { data, error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .update(mappedData)
     .eq('id', id)
     .select()
@@ -344,7 +344,7 @@ export const updateTask = async (id: string, taskData: any) => {
 
 export const deleteTask = async (id: string) => {
   const { error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .delete()
     .eq('id', id);
   
@@ -355,17 +355,17 @@ export const deleteTask = async (id: string) => {
 // Goal operations
 export const getGoals = async (clientId: string) => {
   const { data, error } = await supabase
-    .from('goals')
+    .from(tableFrom('goals'))
     .select('*')
-    .eq('clientId', clientId);
+    .eq('client_id', clientId);
   
   if (error) throw error;
-  return data;
+  return data || [];
 };
 
 export const getGoal = async (id: string) => {
   const { data, error } = await supabase
-    .from('goals')
+    .from(tableFrom('goals'))
     .select('*')
     .eq('id', id)
     .single();
@@ -401,7 +401,7 @@ export const createGoal = async (goalData: any) => {
   });
 
   const { data, error } = await supabase
-    .from('goals')
+    .from(tableFrom('goals'))
     .insert([mappedData])
     .select()
     .single();
@@ -439,7 +439,7 @@ export const updateGoal = async (id: string, goalData: any) => {
   });
 
   const { data, error } = await supabase
-    .from('goals')
+    .from(tableFrom('goals'))
     .update(mappedData)
     .eq('id', id)
     .select()
@@ -454,7 +454,7 @@ export const updateGoal = async (id: string, goalData: any) => {
 
 export const deleteGoal = async (id: string) => {
   const { error } = await supabase
-    .from('goals')
+    .from(tableFrom('goals'))
     .delete()
     .eq('id', id);
   
@@ -465,7 +465,7 @@ export const deleteGoal = async (id: string) => {
 // User profile operations
 export const getUserProfile = async (userId: string) => {
   const { data, error } = await supabase
-    .from('users')
+    .from(tableFrom('profiles'))
     .select('*')
     .eq('id', userId)
     .single();
@@ -476,7 +476,7 @@ export const getUserProfile = async (userId: string) => {
 
 export const updateUserProfile = async (userId: string, profileData: any) => {
   const { data, error } = await supabase
-    .from('users')
+    .from(tableFrom('profiles'))
     .update(profileData)
     .eq('id', userId)
     .select()
@@ -524,7 +524,7 @@ export const getClientsByTherapist = async (therapistId: string) => {
   try {
     // Query clients associated with the therapist
     const { data, error } = await supabase
-      .from('clients')
+      .from(tableFrom('clients'))
       .select('*')
       .eq('therapist_id', therapistId);
       

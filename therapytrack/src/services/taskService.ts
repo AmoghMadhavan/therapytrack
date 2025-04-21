@@ -1,4 +1,12 @@
 import { supabase } from '../lib/supabaseClient';
+import { tableFrom } from '../lib/supabase/config';
+
+// Define a ClientInfo type to be used in clientsMap
+interface ClientInfo {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
 
 export interface Task {
   id?: string;
@@ -20,19 +28,17 @@ export interface Task {
   created_at?: string;
   updated_at?: string;
   clientName?: string;
-  clients?: { id: string; firstName: string; lastName: string };
+  clients?: { id: string; first_name: string; last_name: string };
   dueDate?: string;
 }
 
 // Get all tasks for a therapist
 export const getTasksByTherapist = async (therapistId: string) => {
   try {
+    // Using a simpler query approach to avoid string interpolation issues
     const { data, error } = await supabase
-      .from('tasks')
-      .select(`
-        *,
-        clients(id, firstName, lastName)
-      `)
+      .from(tableFrom('tasks'))
+      .select('*')
       .eq('therapist_id', therapistId);
 
     if (error) {
@@ -40,11 +46,40 @@ export const getTasksByTherapist = async (therapistId: string) => {
       throw error;
     }
 
+    // If needed, make a separate query for client details
+    // or consider using RPC functions for more complex joins
+    const taskData = data || [];
+    
+    // Get client IDs from tasks
+    const clientIds = taskData.map(task => task.client_id).filter(Boolean);
+    
+    // If we have client IDs, fetch client details
+    let clientsMap: Record<string, ClientInfo> = {};
+    if (clientIds.length > 0) {
+      const { data: clientsData } = await supabase
+        .from(tableFrom('clients'))
+        .select('id, first_name, last_name')
+        .in('id', clientIds);
+        
+      if (clientsData) {
+        // Create a map of client ID to client details
+        clientsMap = clientsData.reduce<Record<string, ClientInfo>>((map, client) => {
+          map[client.id] = client;
+          return map;
+        }, {});
+      }
+    }
+    
     // Format the tasks with client names
-    const formattedTasks = data.map(task => ({
-      ...task,
-      clientName: task.clients ? `${task.clients.firstName} ${task.clients.lastName}` : 'Unknown Client'
-    }));
+    const formattedTasks = taskData.map(task => {
+      const client = clientsMap[task.client_id];
+      return {
+        ...task,
+        clientName: client 
+          ? `${client.first_name} ${client.last_name}` 
+          : 'Unknown Client'
+      };
+    });
 
     return formattedTasks;
   } catch (error) {
@@ -57,7 +92,7 @@ export const getTasksByTherapist = async (therapistId: string) => {
 export const getTasksByClient = async (therapistId: string, clientId: string) => {
   try {
     const { data, error } = await supabase
-      .from('tasks')
+      .from(tableFrom('tasks'))
       .select('*')
       .eq('therapist_id', therapistId)
       .eq('client_id', clientId);
@@ -77,7 +112,7 @@ export const getTasksByClient = async (therapistId: string, clientId: string) =>
 // Get a single task by ID
 export const getTaskById = async (id: string, therapistId: string): Promise<Task | null> => {
   const { data, error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .select('*')
     .eq('id', id)
     .eq('therapist_id', therapistId)
@@ -94,7 +129,7 @@ export const getTaskById = async (id: string, therapistId: string): Promise<Task
 // Create a new task
 export const createTask = async (task: Task): Promise<Task> => {
   const { data, error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .insert([task])
     .select()
     .single();
@@ -110,7 +145,7 @@ export const createTask = async (task: Task): Promise<Task> => {
 // Update an existing task
 export const updateTask = async (id: string, task: Partial<Task>): Promise<Task> => {
   const { data, error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .update(task)
     .eq('id', id)
     .eq('therapist_id', task.therapist_id)
@@ -128,7 +163,7 @@ export const updateTask = async (id: string, task: Partial<Task>): Promise<Task>
 // Delete a task
 export const deleteTask = async (id: string, therapistId: string): Promise<void> => {
   const { error } = await supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .delete()
     .eq('id', id)
     .eq('therapist_id', therapistId);
@@ -150,7 +185,7 @@ export const updateTaskStatus = async (taskId: string, status: Task['status'], c
     }
 
     const { data, error } = await supabase
-      .from('tasks')
+      .from(tableFrom('tasks'))
       .update(updates)
       .eq('id', taskId)
       .select();
@@ -174,7 +209,7 @@ export const getTasks = async (therapistId: string, filters?: {
   dueDate?: string;
 }): Promise<Task[]> => {
   let query = supabase
-    .from('tasks')
+    .from(tableFrom('tasks'))
     .select('*')
     .eq('therapist_id', therapistId);
 

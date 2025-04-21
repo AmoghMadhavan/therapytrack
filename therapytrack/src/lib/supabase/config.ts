@@ -4,10 +4,17 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || '';
 
+// Database schema configuration
+export const DB_SCHEMA = 'therapy';
+
+// Table name utility function
+export const tableFrom = (tableName: string) => `${DB_SCHEMA}.${tableName}`;
+
 // Less verbose logging in production
 if (process.env.NODE_ENV === 'development') {
   console.log('[SUPABASE] URL:', supabaseUrl ? 'Configured' : 'MISSING');
   console.log('[SUPABASE] Anon Key:', supabaseAnonKey ? 'Configured' : 'MISSING');
+  console.log('[SUPABASE] Using database schema:', DB_SCHEMA);
 }
 
 // Use fallback values for development if needed
