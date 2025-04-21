@@ -11,7 +11,7 @@ export const getClients = async (therapistId: string) => {
   const { data, error } = await supabase
     .from('clients')
     .select('*')
-    .eq('therapistId', therapistId);
+    .eq('therapist_id', therapistId);
   
   if (error) throw error;
   return data;
@@ -29,25 +29,96 @@ export const getClient = async (id: string) => {
 };
 
 export const createClient = async (clientData: any) => {
+  // Convert camelCase to snake_case for database compatibility
+  const mappedData: Record<string, any> = {
+    therapist_id: clientData.therapistId,
+    user_id: clientData.userId,
+    first_name: clientData.firstName,
+    last_name: clientData.lastName,
+    date_of_birth: clientData.dateOfBirth,
+    gender: clientData.gender,
+    email: clientData.contactInfo?.email,
+    phone: clientData.contactInfo?.phone,
+    guardian_name: clientData.contactInfo?.guardianName,
+    guardian_relationship: clientData.contactInfo?.guardianRelationship,
+    guardian_phone: clientData.contactInfo?.guardianPhone,
+    guardian_email: clientData.contactInfo?.guardianEmail,
+    address_street: clientData.contactInfo?.address?.street,
+    address_city: clientData.contactInfo?.address?.city,
+    address_state: clientData.contactInfo?.address?.state,
+    address_zip: clientData.contactInfo?.address?.zip,
+    diagnosis: clientData.diagnosis || [],
+    notes: clientData.notes,
+    status: clientData.status || 'active',
+    created_at: clientData.createdAt,
+    updated_at: clientData.updatedAt,
+    goal_areas: clientData.goalAreas || []
+  };
+
+  // Remove any undefined values to avoid database constraint issues
+  Object.keys(mappedData).forEach(key => {
+    if (mappedData[key] === undefined) {
+      delete mappedData[key];
+    }
+  });
+
   const { data, error } = await supabase
     .from('clients')
-    .insert([clientData])
+    .insert([mappedData])
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error creating client:', error);
+    throw error;
+  }
   return data;
 };
 
 export const updateClient = async (id: string, clientData: any) => {
+  // Convert camelCase to snake_case for database compatibility
+  const mappedData: Record<string, any> = {
+    therapist_id: clientData.therapistId,
+    user_id: clientData.userId,
+    first_name: clientData.firstName,
+    last_name: clientData.lastName,
+    date_of_birth: clientData.dateOfBirth,
+    gender: clientData.gender,
+    email: clientData.contactInfo?.email,
+    phone: clientData.contactInfo?.phone,
+    guardian_name: clientData.contactInfo?.guardianName,
+    guardian_relationship: clientData.contactInfo?.guardianRelationship,
+    guardian_phone: clientData.contactInfo?.guardianPhone,
+    guardian_email: clientData.contactInfo?.guardianEmail,
+    address_street: clientData.contactInfo?.address?.street,
+    address_city: clientData.contactInfo?.address?.city,
+    address_state: clientData.contactInfo?.address?.state,
+    address_zip: clientData.contactInfo?.address?.zip,
+    diagnosis: clientData.diagnosis || [],
+    notes: clientData.notes,
+    status: clientData.status || 'active',
+    updated_at: clientData.updatedAt,
+    goal_areas: clientData.goalAreas || []
+  };
+
+  // Remove any undefined values to avoid database constraint issues
+  Object.keys(mappedData).forEach(key => {
+    if (mappedData[key] === undefined) {
+      delete mappedData[key];
+    }
+  });
+
   const { data, error } = await supabase
     .from('clients')
-    .update(clientData)
+    .update(mappedData)
     .eq('id', id)
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error updating client:', error);
+    throw error;
+  }
   return data;
 };
 
@@ -196,25 +267,78 @@ export const getTask = async (id: string) => {
 };
 
 export const createTask = async (taskData: any) => {
+  // Convert camelCase to snake_case for database compatibility
+  const mappedData: Record<string, any> = {
+    therapist_id: taskData.therapist_id || taskData.therapistId,
+    client_id: taskData.client_id || taskData.clientId,
+    title: taskData.title,
+    description: taskData.description,
+    assigned_date: taskData.assigned_date || taskData.assignedDate || new Date(),
+    due_date: taskData.due_date || taskData.dueDate,
+    status: taskData.status || 'assigned',
+    priority: taskData.priority || 'medium',
+    goal_areas: taskData.goal_areas || taskData.goalAreas || [],
+    frequency: taskData.frequency || 'once',
+    created_at: taskData.created_at || taskData.createdAt || new Date(),
+    updated_at: taskData.updated_at || taskData.updatedAt || new Date(),
+    session_id: taskData.session_id || taskData.sessionId
+  };
+
+  // Remove any undefined values to avoid database constraint issues
+  Object.keys(mappedData).forEach(key => {
+    if (mappedData[key] === undefined) {
+      delete mappedData[key];
+    }
+  });
+
   const { data, error } = await supabase
     .from('tasks')
-    .insert([taskData])
+    .insert([mappedData])
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error creating task:', error);
+    throw error;
+  }
   return data;
 };
 
 export const updateTask = async (id: string, taskData: any) => {
+  // Convert camelCase to snake_case for database compatibility
+  const mappedData: Record<string, any> = {
+    therapist_id: taskData.therapist_id || taskData.therapistId,
+    client_id: taskData.client_id || taskData.clientId,
+    title: taskData.title,
+    description: taskData.description,
+    assigned_date: taskData.assigned_date || taskData.assignedDate,
+    due_date: taskData.due_date || taskData.dueDate,
+    status: taskData.status,
+    priority: taskData.priority,
+    goal_areas: taskData.goal_areas || taskData.goalAreas,
+    frequency: taskData.frequency,
+    updated_at: taskData.updated_at || taskData.updatedAt || new Date(),
+    session_id: taskData.session_id || taskData.sessionId
+  };
+
+  // Remove any undefined values to avoid database constraint issues
+  Object.keys(mappedData).forEach(key => {
+    if (mappedData[key] === undefined) {
+      delete mappedData[key];
+    }
+  });
+
   const { data, error } = await supabase
     .from('tasks')
-    .update(taskData)
+    .update(mappedData)
     .eq('id', id)
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error updating task:', error);
+    throw error;
+  }
   return data;
 };
 
@@ -251,25 +375,80 @@ export const getGoal = async (id: string) => {
 };
 
 export const createGoal = async (goalData: any) => {
+  // Convert camelCase to snake_case for database compatibility
+  const mappedData: Record<string, any> = {
+    therapist_id: goalData.therapist_id || goalData.therapistId,
+    client_id: goalData.client_id || goalData.clientId,
+    title: goalData.title,
+    description: goalData.description,
+    area: goalData.area,
+    status: goalData.status || 'active',
+    target_date: goalData.target_date || goalData.targetDate,
+    baseline_measurement: goalData.baseline_measurement || goalData.baselineMeasurement,
+    current_measurement: goalData.current_measurement || goalData.currentMeasurement,
+    target_measurement: goalData.target_measurement || goalData.targetMeasurement,
+    measurement_unit: goalData.measurement_unit || goalData.measurementUnit,
+    notes: goalData.notes,
+    created_at: goalData.created_at || goalData.createdAt || new Date(),
+    updated_at: goalData.updated_at || goalData.updatedAt || new Date()
+  };
+
+  // Remove any undefined values to avoid database constraint issues
+  Object.keys(mappedData).forEach(key => {
+    if (mappedData[key] === undefined) {
+      delete mappedData[key];
+    }
+  });
+
   const { data, error } = await supabase
     .from('goals')
-    .insert([goalData])
+    .insert([mappedData])
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error creating goal:', error);
+    throw error;
+  }
   return data;
 };
 
 export const updateGoal = async (id: string, goalData: any) => {
+  // Convert camelCase to snake_case for database compatibility
+  const mappedData: Record<string, any> = {
+    therapist_id: goalData.therapist_id || goalData.therapistId,
+    client_id: goalData.client_id || goalData.clientId,
+    title: goalData.title,
+    description: goalData.description,
+    area: goalData.area,
+    status: goalData.status,
+    target_date: goalData.target_date || goalData.targetDate,
+    baseline_measurement: goalData.baseline_measurement || goalData.baselineMeasurement,
+    current_measurement: goalData.current_measurement || goalData.currentMeasurement,
+    target_measurement: goalData.target_measurement || goalData.targetMeasurement,
+    measurement_unit: goalData.measurement_unit || goalData.measurementUnit,
+    notes: goalData.notes,
+    updated_at: goalData.updated_at || goalData.updatedAt || new Date()
+  };
+
+  // Remove any undefined values to avoid database constraint issues
+  Object.keys(mappedData).forEach(key => {
+    if (mappedData[key] === undefined) {
+      delete mappedData[key];
+    }
+  });
+
   const { data, error } = await supabase
     .from('goals')
-    .update(goalData)
+    .update(mappedData)
     .eq('id', id)
     .select()
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error updating goal:', error);
+    throw error;
+  }
   return data;
 };
 
